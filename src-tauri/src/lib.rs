@@ -23,7 +23,6 @@ use tauri::{AppHandle, Manager as _};
 #[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt as _;
-use tauri_plugin_mihomo::RejectPolicy;
 
 pub static APP_HANDLE: OnceCell<AppHandle> = OnceCell::new();
 /// Application initialization helper functions
@@ -58,15 +57,6 @@ mod app_init {
                 tauri_plugin_mihomo::Builder::new()
                     .protocol(tauri_plugin_mihomo::models::Protocol::LocalSocket)
                     .socket_path(crate::config::IClashTemp::guard_external_controller_ipc())
-                    .pool_config(
-                        tauri_plugin_mihomo::IpcPoolConfigBuilder::new()
-                            .min_connections(3)
-                            .max_connections(32)
-                            .idle_timeout(std::time::Duration::from_secs(60))
-                            .health_check_interval(std::time::Duration::from_secs(60))
-                            .reject_policy(RejectPolicy::Wait)
-                            .build(),
-                    )
                     .build(),
             );
 
@@ -250,7 +240,6 @@ pub fn run() {
                 logging!(error, Type::Setup, "Failed to setup window state: {}", e);
             }
 
-            resolve::resolve_setup_handle();
             resolve::resolve_setup_async();
             resolve::resolve_setup_sync();
             resolve::init_signal();
@@ -282,7 +271,6 @@ pub fn run() {
             }
 
             logging!(info, Type::System, "应用就绪");
-            handle::Handle::global().init();
 
             #[cfg(target_os = "macos")]
             if let Some(window) = _app_handle.get_webview_window("main") {
@@ -292,8 +280,6 @@ pub fn run() {
 
         #[cfg(target_os = "macos")]
         pub async fn handle_reopen(has_visible_windows: bool) {
-            handle::Handle::global().init();
-
             if lightweight::is_in_lightweight_mode() {
                 lightweight::exit_lightweight_mode().await;
                 return;
